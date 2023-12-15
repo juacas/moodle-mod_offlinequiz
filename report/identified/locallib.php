@@ -19,9 +19,9 @@
  *
  * @package       mod
  * @subpackage    offlinequiz
- * @author        Juergen Zimmer <zimmerj7@univie.ac.at>
- * @copyright     2015 Academic Moodle Cooperation {@link http://www.academic-moodle-cooperation.org}
- * @since         Moodle 2.2+
+ * @author        Juan Pablo de Castro <juanpablo.decastro@uva.es>
+ * @copyright     2023 Universidad de Valladolid {@link http://www.uva.es}
+ * @since         Moodle 4.1+
  * @license       http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -32,9 +32,6 @@ require_once($CFG->libdir . '/pdflib.php');
 require_once($CFG->libdir . '/questionlib.php');
 require_once($CFG->dirroot . '/question/type/questionbase.php');
 require_once($CFG->libdir . '/formslib.php');
-// require_once($CFG->dirroot . '/filter/tex/filter.php');
-// require_once($CFG->dirroot . '/mod/offlinequiz/html2text.php');
-// require_once($CFG->dirroot . '/mod/offlinequiz/documentlib.php');
 require_once($CFG->dirroot . '/mod/offlinequiz/pdflib.php');
 
 class offlinequiz_answer_pdf_identified extends offlinequiz_answer_pdf {
@@ -151,15 +148,18 @@ class offlinequiz_answer_pdf_identified extends offlinequiz_answer_pdf {
 * @param object $participant the participant for this page.
 * @return the modified PDF object.
 */
-function offlinequiz_create_pdf_answer_body($pdf, $maxanswers, $templateusage, $offlinequiz, $group, $courseid, $context, $participant) {
+function offlinequiz_create_pdf_answer_body($pdf, $maxanswers, $templateusage, $offlinequiz, $group, $courseid, $context, $participant, $nogroupmark) {
     global $CFG, $DB, $OUTPUT, $USER;
     // Static variable for caching the questions.
     static $questions_cache = array();
     // Static variable for caching the question slots.
     static $slots_cache = array();
-
-    $letterstr = ' abcdefghijklmnopqrstuvwxyz';
-    $groupletter = strtoupper($letterstr[$group->groupnumber]);
+    if ($nogroupmark==true){
+        $groupletter = '';
+    } else {
+        $letterstr = ' abcdefghijklmnopqrstuvwxyz';
+        $groupletter = strtoupper($letterstr[$group->groupnumber]);
+    }
 
     $fm = new stdClass();
     $fm->q = 0;
@@ -233,28 +233,7 @@ function offlinequiz_create_pdf_answer_body($pdf, $maxanswers, $templateusage, $
     } else {
         $questions = $questions_cache[$offlinequiz->id][$group->id];
     }
-    // $sql = "SELECT q.*, c.contextid, ogq.page, ogq.slot, ogq.maxmark
-    //           FROM {offlinequiz_group_questions} ogq
-    //           JOIN {question} q ON ogq.questionid = q.id
-    //           JOIN {question_versions} qv ON qv.questionid = q.id
-    //           JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
-    //           JOIN {question_categories} c ON qbe.questioncategoryid = c.id
-    //          WHERE ogq.offlinequizid = :offlinequizid
-    //            AND ogq.offlinegroupid = :offlinegroupid
-    //       ORDER BY ogq.slot ASC ";
-    // $params = array('offlinequizid' => $offlinequiz->id, 'offlinegroupid' => $group->id);
-
-    // if (!$questions = $DB->get_records_sql($sql, $params)) {
-    //     echo $OUTPUT->box_start();
-    //     echo $OUTPUT->error_text(get_string('noquestionsfound', 'offlinequiz', $groupletter));
-    //     echo $OUTPUT->box_end();
-    //     return;
-    // }
-
-    // // Load the question type specific information.
-    // if (!get_question_options($questions)) {
-    //     print_error('Could not load question options');
-    // }
+   
 
     // Counting the total number of multichoice questions in the question usage.
     $totalnumber = offlinequiz_count_multichoice_questions($templateusage);
@@ -340,7 +319,7 @@ function offlinequiz_create_pdf_answer_body($pdf, $maxanswers, $templateusage, $
  * @param unknown_type $context
  * @return boolean
  */
-function offlinequiz_create_pdf_participants_answers($offlinequiz, $courseid, $groupnumber, $list, $context) {
+function offlinequiz_create_pdf_participants_answers($offlinequiz, $courseid, $groupnumber, $list, $context, $nogroupmark=false) {
     global $CFG, $DB;
 
     $coursecontext = context_course::instance($courseid); // Course context.
@@ -400,7 +379,12 @@ function offlinequiz_create_pdf_participants_answers($offlinequiz, $courseid, $g
     $letterstr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     // Answers page.
     $group = $DB->get_record('offlinequiz_groups', array('offlinequizid' => $offlinequiz->id, 'groupnumber' => $groupnumber));
-    $pdf->group = $letterstr[$groupnumber - 1];
+    
+    // if ($nogroupmark==true){
+    //     $pdf->group = '';
+    // } else {
+    //     $pdf->group = $letterstr[$groupnumber - 1];
+    // }
 
     $pdf->SetFont('FreeSans', '', 10);
     $maxanswers= offlinequiz_get_maxanswers($offlinequiz, array($group));
@@ -412,7 +396,7 @@ function offlinequiz_create_pdf_participants_answers($offlinequiz, $courseid, $g
     }
  
     foreach ($participants as $participant) {
-        offlinequiz_create_pdf_answer_body($pdf, $maxanswers, $templateusage, $offlinequiz, $group, $courseid, $context, $participant);
+        offlinequiz_create_pdf_answer_body($pdf, $maxanswers, $templateusage, $offlinequiz, $group, $courseid, $context, $participant, $nogroupmark);
     }
 
     $pdf->Output("{$offlinequiz->name}_{$listname}.pdf", 'D');
@@ -440,10 +424,12 @@ class identifiedformselector extends \moodleform {
             $offlinequiz->numgroups
         );
         // map groups to letters.
-        $groups = array_map(function($group) {
+        $groupsoptions = [];
+        foreach ($groups as $group) {
             $letterstr = "ABCDEFGH"; 
-            return $letterstr[$group->groupnumber-1];
-        }, $groups);
+            $letter = $letterstr[$group->groupnumber-1];
+            $groupsoptions[] = $letter;
+            };
         // map lists to list->name.
         $lists = array_map(function($list) use ($offlinequiz) {
             global $DB;
@@ -466,10 +452,19 @@ class identifiedformselector extends \moodleform {
             $mform->addElement('hidden', 'mode', 'identified');
             $mform->setType('mode', PARAM_TEXT);
             $mform->addElement('header', 'general', get_string('pluginname', 'offlinequiz_identified'));
-            $mform->addElement('select', 'groupnumber', get_string('group', 'offlinequiz'), $groups);
+            $mform->addElement('select', 'groupnumber', get_string('group', 'offlinequiz'), $groupsoptions);
             $mform->setType('groupnumber', PARAM_INT);
+            $mform->setDefault('groupnumber', 0);
+            $mform->addRule('groupnumber', null, 'required', null, 'client');
+            // Check box for nor marking group.
+            $mform->addElement('checkbox', 'nogroupmark', get_string('nogroupmark', 'offlinequiz_identified'));
+            $mform->setDefault('nogroupmark', 0);
+           
             $mform->addElement('select', 'list', get_string('participants', 'offlinequiz'), $lists);
             $mform->setType('list', PARAM_INT);
+            $mform->setDefault('list', 0);
+            // Set list required.
+            $mform->addRule('list', null, 'required', null, 'client');
             $mform->addElement('submit', 'submitbutton', get_string('submit'));
         }
     }

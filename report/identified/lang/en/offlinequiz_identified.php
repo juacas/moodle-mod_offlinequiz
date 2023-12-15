@@ -16,6 +16,7 @@
 
 $string['pluginname'] = 'Identified forms';
 $string['identified'] = 'Identified forms';
-$string['identifiedreport'] = 'Select group and list to generate the premarked forms. It may take a while depending on the number of students. Create your lists in the <a href="participants.php?q=1&mode=editlists">Attendance lists section.</a>';
+$string['identifiedreport'] = 'Select group and list to generate the premarked forms. It may take a while depending on the number of students. Create your lists in the <a href="{$a}">Attendance lists section.</a>';
 $string['noparticipantsinlist'] = 'There are no participants in the selected list';
-$string['notgenerated'] = 'The forms have not been generated yet. Please, go to the Preparation section and create your exams.';
+$string['notgenerated'] = 'The forms have not been generated yet. Please, go to the <a href="{$a}">Preparation section</a> and create your exams.';
+$string['nogroupmark'] = 'Don\'t mark group checkbox.';

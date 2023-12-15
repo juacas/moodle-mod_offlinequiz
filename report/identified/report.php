@@ -19,8 +19,8 @@ use offlinequiz_identified\identifiedform;
 /**
  * Offlinequiz identified forms generator version info
  *
- * @package       mod
- * @subpackage    offlinequiz
+ * @package       mod_offlinequiz
+ * @subpackage    report_identified
  * @author        Juan Pablo de Castro <juanpablo.decastro@uva.es>
  * @copyright     2023
  * @since         Moodle 4.1
@@ -31,6 +31,9 @@ use offlinequiz_identified\identifiedform;
 defined('MOODLE_INTERNAL') || die();
 
 require_once("report/identified/locallib.php");
+/**
+ * Offlinequiz identified forms generator.
+ */
 class offlinequiz_identified_report extends offlinequiz_default_report
 {
 
@@ -46,19 +49,21 @@ class offlinequiz_identified_report extends offlinequiz_default_report
             $resultmsg = "";
             // Form processing and displaying is done here.
             if ($fromform = $mform->get_data()) {
-                $listid = $fromform->list;
-                $groupid = $fromform->groupnumber;
+                $listid = isset($fromform->list)? $fromform->list : -1;
+                $groupid = $fromform->groupnumber+1;
+                $nogroupmark = isset($fromform->nogroupmark);
                 $list = $DB->get_record('offlinequiz_p_lists', array('offlinequizid' => $offlinequiz->id, 'id' => $listid));
                 if ($list) {
                     raise_memory_limit(MEMORY_EXTRA);
-                    if (offlinequiz_create_pdf_participants_answers($offlinequiz, $course->id, $groupid, $list, $context)) {
+                    if (offlinequiz_create_pdf_participants_answers($offlinequiz, $course->id, $groupid, $list, $context, $nogroupmark)) {
                         // PDF created and downloaded.
                         die();
                     } else {
                         $resultmsg = get_string('noparticipantsinlist', 'offlinequiz_identified');
-                    }
-                    ;
-                }
+                    };
+                } else {
+                    $resultmsg = get_string('noparticipantsinlist', 'offlinequiz_identified');
+                };
             }
         }
 
@@ -67,7 +72,9 @@ class offlinequiz_identified_report extends offlinequiz_default_report
         // Display Tabs.
         $this->print_header_and_tabs($cm, $course, $offlinequiz, 'identified');
         if ($offlinequiz->docscreated == 0) {
-            echo $OUTPUT->notification(get_string('notgenerated', 'offlinequiz_identified'), 'notifyproblem');
+            // url createquiz.
+            $url = new moodle_url('/mod/offlinequiz/createquiz.php', ['q' => $offlinequiz->id, 'mode' => 'createpdfs', 'tabs' => 'tabpreview']);
+            echo $OUTPUT->notification(get_string('notgenerated', 'offlinequiz_identified', $url->out()), 'notifyproblem');
             return true;
         } else {
             // Display the result message.
@@ -75,7 +82,9 @@ class offlinequiz_identified_report extends offlinequiz_default_report
                 echo $OUTPUT->notification($resultmsg, 'notifyproblem');
             }
             // Display the description.
-            echo $OUTPUT->box(get_string('identifiedreport', 'offlinequiz_identified'), 'generalbox', 'intro');
+            // Url: participants.php?q=1&mode=editlists.
+            $url = new moodle_url('/mod/offlinequiz/participants.php', ['q' => $offlinequiz->id, 'mode' => 'editlists', 'tabs'=>'tabattendances']);
+            echo $OUTPUT->box(get_string('identifiedreport', 'offlinequiz_identified', $url->out()), 'generalbox', 'intro');
             // Display the form.
             $mform->display();
         }
@@ -94,6 +103,9 @@ class offlinequiz_identified_report extends offlinequiz_default_report
         // Prints information about the offlinequiz identified report.
         offlinequiz_print_tabs($offlinequiz, $currenttab, $cm);
     }
+    /**
+     * Add the identified report tab to the offlinequiz module.
+     */
     public function add_to_tabs($tabs, $cm, $offlinequiz)
     {
         $tabs['tabidentified'] = [

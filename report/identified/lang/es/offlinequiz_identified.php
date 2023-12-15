@@ -16,6 +16,7 @@
 
 $string['pluginname'] = 'Formularios identificados';
 $string['identified'] = 'Formularios identificados';
-$string['identifiedreport'] = 'Seleccione grupo y lista para generar los formularios premarcados. Puede tardar un poco dependiendo del número de alumnos. Cree sus listas en la sección <a href="participants.php?q=1&mode=editlists">Listas de asistencia.</a>';
+$string['identifiedreport'] = 'Seleccione grupo y lista para generar los formularios premarcados. Puede tardar un poco dependiendo del número de alumnos. Cree sus listas en la sección <a href="{$a}">Listas de asistencia.</a>';
 $string['noparticipantsinlist'] = 'No hay participantes en la lista seleccionada';
-$string['notgenerated'] = 'Los formularios no se han generado todavía. Por favor, vaya a la sección Preparación y cree sus exámenes.';
+$string['notgenerated'] = 'Los formularios no se han generado todavía. Por favor, vaya a la sección <a href="{$a}">Preparación y cree sus exámenes</a>.';
+$string['nogroupmark'] = 'No marcar la casilla de grupo.';
